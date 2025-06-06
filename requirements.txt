@@ -1,2 +1,7 @@
 streamlit
 openai
+pandas
+streamlit
+thefuzz[speedup]
+fuzzywuzzy
+python-Levenshtein
