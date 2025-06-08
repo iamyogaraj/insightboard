@@ -572,7 +572,7 @@ elif menu == "MVR GPT":
                     st.info("If you have doubt on this ask QC team once")
                 st.info(f"Violation category: **{category}**")
             else:
-                st.warning("Better reach out to the QC Team!✨")
+                st.warning("Better reach out to the QC Team! ✨")
 
 # Access denied message
 else:
