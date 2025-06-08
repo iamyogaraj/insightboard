@@ -79,9 +79,9 @@ body, .stMarkdown, .stText, .stDataFrame, .stMetric {
 def authenticate(username, password):
     """Check user credentials and return role"""
     credentials = {
-        "admin": {"username": "yogaraj", "password": "afrin", "role": "admin"},
-        "user": {"username": "user", "password": "userpass", "role": "user"},
-        "bpo": {"username": "bpo", "password": "bpopass", "role": "bpo"}
+        "admin": {"username": "yogaraj", "password": "afrin", "role": "ADMIN"},
+        "user": {"username": "user", "password": "ssapresu", "role": "QA"},
+        "bpo": {"username": "user", "password": "ssapopb", "role": "MAKER"}
     }
     
     for role, creds in credentials.items():
@@ -448,23 +448,23 @@ if menu == "All Trans MVR" and st.session_state["role"] in ["admin", "user"]:
 
 # Welcome screen for "App" menu
 elif menu == "App":
-    st.markdown('<div class="custom-heading">DriverSync Hub</div>', unsafe_allow_html=True)
+    st.markdown('<div class="custom-heading">NLR Hub</div>', unsafe_allow_html=True)
     
     # Welcome section with profile picture and greeting
     col1, col2 = st.columns([1, 3])
     
     with col1:
-        # Display profile picture (replace with actual image URL)
-        st.image("https://avatars.githubusercontent.com/u/14985020?s=400&v=4", 
+        # kung fu panda (Dragon Warrior)
+        st.image("https://w0.peakpx.com/wallpaper/899/489/HD-wallpaper-po-impressed-hall-of-warriors-kung-fu-panda.jpg", 
                  width=200, 
-                 caption="Yogaraj - Lead Developer")
+                 caption="insights are coming")
     
     with col2:
         st.markdown("""
         <div style='border-left: 4px solid #4CAF50; padding-left: 1rem;'>
-        <h2 style='color: #4CAF50;'>Welcome to DriverSync Hub!</h2>
+        <h2 style='color: #4CAF50;'>Welcome to InsightOps Hub!</h2>
         <p style='font-size: 1.1rem;'>
-        Your all-in-one platform for driver compliance management. Streamline MVR processing, 
+        Your central engine for processing documents, extracting insights, and generating requirement-driven outputs — all automated. Streamline MVR processing, 
         IFTA reporting, and driver record management with our powerful automation tools.
         </p>
         <p style='font-size: 1.1rem;'>
@@ -476,7 +476,7 @@ elif menu == "App":
     st.divider()
     
     # Quick stats dashboard
-    st.subheader("🚀 Performance Dashboard")
+    st.subheader("Performance Dashboard")
     col1, col2, col3 = st.columns(3)
     col1.metric("Total Drivers", "1,428", "+24 this week")
     col2.metric("Compliance Rate", "96.7%", "+1.2% from last month")
@@ -538,7 +538,9 @@ elif menu == "Riscom MVR" and st.session_state["role"] in ["admin", "user"]:
 # MVR GPT tool (accessible to all roles)
 elif menu == "MVR GPT":
     st.markdown('<div class="custom-heading">MVR GPT Tool</div>', unsafe_allow_html=True)
-    
+    st.image("https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTIGEqSiDgNs2c5VkcZ9eUba_LVjvy74f7w-w&s",                 
+             width=100, 
+                 caption="")
     @st.cache_data
     def load_data():
         try:
@@ -549,12 +551,12 @@ elif menu == "MVR GPT":
             return pd.DataFrame()  # return empty dataframe on error
 
     df = load_data()
-
+    
     if df.empty:
         st.stop()
 
     user_input = st.text_input("Enter Violation Description:")
-
+    
     if user_input:
         if 'Violation Description' not in df.columns or 'Category' not in df.columns:
             st.error("❗Missing required columns ('Violation Description' or 'Category') in Excel file.")
