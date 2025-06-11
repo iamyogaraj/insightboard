@@ -537,43 +537,94 @@ elif menu == "Riscom MVR" and st.session_state["role"] in ["admin", "user"]:
 
 # MVR GPT tool (accessible to all roles)
 elif menu == "MVR GPT":
+    import pandas as pd
+    import streamlit as st
+    from fuzzywuzzy import process, fuzz
+    import re
+    from sklearn.feature_extraction.text import TfidfVectorizer
+    from sklearn.linear_model import LogisticRegression
+    from sklearn.pipeline import Pipeline
+    import joblib
+    import numpy as np
+
     st.markdown('<div class="custom-heading">MVR GPT Tool</div>', unsafe_allow_html=True)
-    st.image("https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTIGEqSiDgNs2c5VkcZ9eUba_LVjvy74f7w-w&s",                 
-             width=100, 
-                 caption="")
+    st.image("https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTIGEqSiDgNs2c5VkcZ9eUba_LVjvy74f7w-w&s",
+            width=100, caption="")
+
     @st.cache_data
     def load_data():
         try:
-            df = pd.read_excel("violations.xlsx", sheet_name="Sheet1")
+            df = pd.read_excel("Violation GPT MODEL.xlsx", sheet_name="Sheet1")
             return df
         except Exception as e:
             st.error(f"❌ Failed to load Excel file: {e}")
-            return pd.DataFrame()  # return empty dataframe on error
+            return pd.DataFrame()
 
     df = load_data()
-    
     if df.empty:
         st.stop()
 
+    # Define Non-Moving Violation keywords
+    non_moving_keywords = [
+        "improper equipment", "defective equipment", "traffic fines", "penalties",
+        "court", "suspension", "misc", "sticker", "tags", "miscellaneous",
+        "background check", "notice", "seat belt", "insurance", "certificate",
+        "weighing", "loading", "length", "carrying", "loads", "susp", "seatbelt"
+    ]
+
+    # ML Model Setup
+    if 'Violation Description' in df.columns and 'Category' in df.columns:
+        df = df.dropna(subset=['Violation Description', 'Category'])
+        X_text = df['Violation Description'].str.lower()
+        y = df['Category']
+        
+        tfidf = TfidfVectorizer(ngram_range=(1,2), stop_words="english")
+        X_numeric = tfidf.fit_transform(X_text)
+
+        model_path = "violation_model.pkl"
+        try:
+            model = joblib.load(model_path)
+        except:
+            model = Pipeline([
+                ('clf', LogisticRegression(max_iter=500))
+            ])
+            model.fit(X_numeric, y)
+            joblib.dump(model, model_path)
+
+    def classify_violation(description):
+        """Checks Excel first, then keyword-based classification, then fuzzy matching & ML."""
+        description_lower = description.lower()
+
+        # **Step 1: Check Excel File First**
+        exact_match = df[df['Violation Description'].str.lower() == description_lower]
+        if not exact_match.empty:
+            return f"✅ Good Match: **{exact_match['Category'].values[0]}**"
+
+        # **Step 2: Keyword-Based Classification for Non-Moving Violations**
+        if any(keyword in description_lower for keyword in non_moving_keywords):
+            return f"🚨 Not Required: **Non-Moving Violation**"
+
+        # **Step 3: Fuzzy Matching for Closest Match**
+        choices = df['Violation Description'].dropna().tolist()
+        match, score = process.extractOne(description, choices, scorer=fuzz.ratio)
+
+        threshold = 75
+        if score >= threshold:
+            category = df.loc[df['Violation Description'] == match, 'Category'].values[0]
+            return f"🔍 Partial Match: **{match}** (Confidence: {score}%) → **{category}**"
+
+        # **Step 4: Apply ML Prediction as Last Resort**
+        description_transformed = tfidf.transform([description_lower])  # Transform input for ML
+        prediction_proba = model.predict_proba(description_transformed)  # Correct input format
+        model_prediction = model.classes_[np.argmax(prediction_proba)]
+        confidence = np.max(prediction_proba) * 100
+
+        return f"🤖 Partial-Based Prediction: **{model_prediction}** (Confidence: {confidence:.2f}%)"
+
+    # User Input Section
     user_input = st.text_input("Enter Violation Description:")
-    
     if user_input:
-        if 'Violation Description' not in df.columns or 'Category' not in df.columns:
-            st.error("❗Missing required columns ('Violation Description' or 'Category') in Excel file.")
+        if user_input.lower() in ['yogaraj', 'yoga']:  # Special Easter Egg 😆
+            st.success("🐉 **Dragon Warrior** 🐼")
         else:
-            choices = df['Violation Description'].dropna().tolist()
-            match, score = process.extractOne(user_input, choices, scorer=fuzz.ratio)
-
-            threshold = 70
-            if score >= threshold:
-                category = df.loc[df['Violation Description'] == match, 'Category'].values[0]
-                st.success(f"Partial match: '{match}' (Confidence: {score}), If you have doubt ask QC team")
-                if score < threshold:
-                    st.info("If you have doubt on this ask QC team once")
-                st.info(f"Violation category: **{category}**")
-            else:
-                st.warning("Better reach out to the QC Team! ✨")
-
-# Access denied message
-else:
-    st.warning("You don't have permission to access this section")
+            st.info(classify_violation(user_input))
