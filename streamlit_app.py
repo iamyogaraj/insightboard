@@ -602,7 +602,7 @@ elif menu == "MVR GPT":
             denom = int(fraction_match.group(2))  # Denominator (e.g., 35)
     
             if num < denom:  # If nominator is less than denominator, it's invalid
-                return "❌ Invalid Speeding Data"
+                return "❌ Invalid Speeding Data : Might be Minor"
     
             elif (num - denom) >= 20:  # Speeding 20+ mph over limit → Major Violation
                 return "🚨 Major Violation"
