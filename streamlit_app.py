@@ -566,7 +566,7 @@ elif menu == "MVR GPT":
 
     # Define Non-Moving Violation keywords
     non_moving_keywords = [
-        "improper equipment", "defective equipment", "traffic fines", "penalties",
+        "improper equipment", "defective equipment", "traffic fines", "penalties","lic","fine","Fine",
         "court", "suspension", "misc", "sticker", "tags", "miscellaneous",
         "background check", "notice", "seat belt", "insurance", "certificate",
         "weighing", "loading", "length", "carrying", "loads", "susp", "seatbelt"
