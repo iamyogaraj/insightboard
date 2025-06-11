@@ -672,6 +672,6 @@ elif menu == "MVR GPT":
         if user_input.lower() in ['yogaraj', 'yoga']:  # Special Easter Egg 😆
             st.success("🐉 **Dragon Warrior** 🐼")
         if user_input.lower() in ['court','lic','Lic','defective equipment','improper equipment']:
-            print("Not required")
+            st.success("Not Required")
         else:
             st.info(classify_violation(user_input))
