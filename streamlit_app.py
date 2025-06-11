@@ -677,6 +677,6 @@ elif menu == "MVR GPT":
         "background check", "notice", "seat belt", "insurance", "certificate",
         "weighing", "loading", "length", "carrying", "loads", "susp", "seatbelt"
     ]:
-        st.success("Not required")
+        print("Not Required")
         else:
             st.info(classify_violation(user_input))
