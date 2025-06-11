@@ -541,16 +541,16 @@ elif menu == "MVR GPT":
     import streamlit as st
     from fuzzywuzzy import process, fuzz
     import re
+    import numpy as np
     from sklearn.feature_extraction.text import TfidfVectorizer
     from sklearn.linear_model import LogisticRegression
     from sklearn.pipeline import Pipeline
     import joblib
-    import numpy as np
-
+    
     st.markdown('<div class="custom-heading">MVR GPT Tool</div>', unsafe_allow_html=True)
     st.image("https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTIGEqSiDgNs2c5VkcZ9eUba_LVjvy74f7w-w&s",
-            width=100, caption="")
-
+             width=100, caption="")
+    
     @st.cache_data
     def load_data():
         try:
@@ -559,19 +559,19 @@ elif menu == "MVR GPT":
         except Exception as e:
             st.error(f"❌ Failed to load Excel file: {e}")
             return pd.DataFrame()
-
+    
     df = load_data()
     if df.empty:
         st.stop()
-
+    
     # Define Non-Moving Violation keywords
     non_moving_keywords = [
-        "improper equipment", "defective equipment", "traffic fines", "penalties","lic","fine","Fine",
+        "improper equipment", "defective equipment", "traffic fines", "penalties","lic","Lic","Fine","fine",
         "court", "suspension", "misc", "sticker", "tags", "miscellaneous",
         "background check", "notice", "seat belt", "insurance", "certificate",
         "weighing", "loading", "length", "carrying", "loads", "susp", "seatbelt"
     ]
-
+    
     # ML Model Setup
     if 'Violation Description' in df.columns and 'Category' in df.columns:
         df = df.dropna(subset=['Violation Description', 'Category'])
@@ -580,7 +580,7 @@ elif menu == "MVR GPT":
         
         tfidf = TfidfVectorizer(ngram_range=(1,2), stop_words="english")
         X_numeric = tfidf.fit_transform(X_text)
-
+    
         model_path = "violation_model.pkl"
         try:
             model = joblib.load(model_path)
@@ -590,37 +590,82 @@ elif menu == "MVR GPT":
             ])
             model.fit(X_numeric, y)
             joblib.dump(model, model_path)
-
+    
+    def detect_priority(description):
+        """Assigns violation category based on speeding fraction and keywords."""
+        description = description.lower()
+    
+        # Extract numerical fraction (e.g., "54/35")
+        fraction_match = re.search(r"(\d{2,})/(\d{2,})", description)
+        if fraction_match:
+            num = int(fraction_match.group(1))  # Nominator (e.g., 54)
+            denom = int(fraction_match.group(2))  # Denominator (e.g., 35)
+    
+            if num < denom:  # If nominator is less than denominator, it's invalid
+                return "❌ Invalid Speeding Data"
+    
+            elif (num - denom) >= 20:  # Speeding 20+ mph over limit → Major Violation
+                return "🚨 Major Violation"
+    
+            else:  # Otherwise, classify as Minor Violation
+                return "⚠️ Minor Violation"
+    
+        # Check keyword priority
+        major_keywords = ["reckless", "dui", "excessive speeding", "dangerous"]
+        prohibited_keywords = ["prohibited", "unauthorized", "restricted"]
+        minor_keywords = ["speeding", "late payment", "parking violation"]
+        accident_keywords = ["collision", "crash", "hit and run"]
+        non_moving_keywords = ["failure to signal", "illegal stop", "obstructing traffic", "seatbelt"]
+    
+        for word in accident_keywords:
+            if word in description:
+                return "Accident Violation"
+        for word in non_moving_keywords:
+            if word in description:
+                return "Non-Moving Violation"
+        for word in major_keywords:
+            if word in description:
+                return "Major Violation"
+        for word in prohibited_keywords:
+            if word in description:
+                return "Prohibited Violation"
+        for word in minor_keywords:
+            if word in description:
+                return "Minor Violation"
+    
+        return "Unknown Violation"
+    
     def classify_violation(description):
         """Checks Excel first, then keyword-based classification, then fuzzy matching & ML."""
         description_lower = description.lower()
-
+    
         # **Step 1: Check Excel File First**
         exact_match = df[df['Violation Description'].str.lower() == description_lower]
         if not exact_match.empty:
-            return f"✅ Good Match: **{exact_match['Category'].values[0]}**"
-
+            return f"✅ Found in Excel: **{exact_match['Category'].values[0]}**"
+    
         # **Step 2: Keyword-Based Classification for Non-Moving Violations**
-        if any(keyword in description_lower for keyword in non_moving_keywords):
-            return f"🚨 Not Required: **Non-Moving Violation**"
-
+        priority_result = detect_priority(description_lower)
+        if priority_result != "Unknown Violation":
+            return f"🚨 Auto-Classified: **{priority_result}**"
+    
         # **Step 3: Fuzzy Matching for Closest Match**
         choices = df['Violation Description'].dropna().tolist()
         match, score = process.extractOne(description, choices, scorer=fuzz.ratio)
-
+    
         threshold = 75
         if score >= threshold:
             category = df.loc[df['Violation Description'] == match, 'Category'].values[0]
-            return f"🔍 Partial Match: **{match}** (Confidence: {score}%) → **{category}**"
-
+            return f"🔍 Fuzzy Match: **{match}** (Confidence: {score}%) → **{category}**"
+    
         # **Step 4: Apply ML Prediction as Last Resort**
         description_transformed = tfidf.transform([description_lower])  # Transform input for ML
         prediction_proba = model.predict_proba(description_transformed)  # Correct input format
         model_prediction = model.classes_[np.argmax(prediction_proba)]
         confidence = np.max(prediction_proba) * 100
-
-        return f"🤖 Partial-Based Prediction: **{model_prediction}** (Confidence: {confidence:.2f}%)"
-
+    
+        return f"🤖 ML-Based Prediction: **{model_prediction}** (Confidence: {confidence:.2f}%)"
+    
     # User Input Section
     user_input = st.text_input("Enter Violation Description:")
     if user_input:
