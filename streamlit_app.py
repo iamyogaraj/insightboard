@@ -546,6 +546,7 @@ elif menu == "MVR GPT":
     from sklearn.linear_model import LogisticRegression
     from sklearn.pipeline import Pipeline
     import joblib
+    from sklearn.preprocessing import LabelEncoder
     
     st.markdown('<div class="custom-heading">MVR GPT Tool</div>', unsafe_allow_html=True)
     st.image("https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTIGEqSiDgNs2c5VkcZ9eUba_LVjvy74f7w-w&s",
