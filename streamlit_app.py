@@ -555,9 +555,9 @@ elif menu == "MVR GPT":
     @st.cache_data
     def load_data():
         try:
-            # Read Excel using openpyxl as the engine
+            # Read Excel file using openpyxl engine
             df = pd.read_excel("Violation GPT MODEL.xlsx", engine="openpyxl")
-            df.columns = df.columns.str.strip()  # Clean column names
+            df.columns = df.columns.str.strip()  # Remove extra whitespace from column names
             df = df.dropna(subset=["Violation Description", "Category"])
             df["Violation Description"] = df["Violation Description"].str.strip()
             return df
@@ -583,18 +583,18 @@ elif menu == "MVR GPT":
     def train_and_save_model(X_vect, y_encoded, tfidf, label_encoder, model_path):
         model = Pipeline([("clf", LogisticRegression(max_iter=500))])
         model.fit(X_vect, y_encoded)
-        # Save the tuple (model, tfidf, label_encoder)
+        # Save all three objects (as a tuple) to file.
         joblib.dump((model, tfidf, label_encoder), model_path)
         return model, tfidf, label_encoder
     
     # === Model Train or Robust Load ===
-    model_path = "violation_model.pkl"  # Ensure this is globally defined
+    model_path = "violation_model.pkl"  # (model_path is now defined, and os is imported above)
     if not os.path.exists(model_path):
         st.info("Training model for the first time...")
         model, tfidf, label_encoder = train_and_save_model(X_vect, y_encoded, tfidf, label_encoder, model_path)
     else:
         loaded_obj = joblib.load(model_path)
-        # Check that the loaded object is a tuple with exactly three items
+        # Check that the loaded object is a tuple with exactly three objects.
         if isinstance(loaded_obj, tuple) and len(loaded_obj) == 3:
             model, tfidf, label_encoder = loaded_obj
         else:
@@ -622,11 +622,11 @@ elif menu == "MVR GPT":
     def detect_priority(desc):
         desc = desc.lower()
     
-        # Constant keyword override
+        # Check constant keyword override for Non-Moving Violation.
         if any(kw in desc for kw in non_moving_keywords):
             return "🚨 Constant Output: **Non-Moving Violation**"
     
-        # Check for speeding fraction
+        # Check for speeding fraction (e.g., "54/35")
         match = re.search(r"(\d{2,})/(\d{2,})", desc)
         if match:
             num, denom = map(int, match.groups())
@@ -637,28 +637,28 @@ elif menu == "MVR GPT":
             else:
                 return "⚠️ Minor Violation"
     
-        # Additional rule-based checks
+        # Apply additional rule-based checks.
         for lbl, kw_list in rules.items():
             if any(k in desc for k in kw_list):
                 return f"🚨 Rule-Based: **{lbl}**"
-    
+        
         return "Unknown Violation"
     
     # === Classification Engine ===
     def classify_violation(description):
         desc = description.strip().lower()
     
-        # Excel exact match check
+        # First, check for an exact match in the Excel data.
         exact = df[df["Violation Description"].str.lower() == desc]
         if not exact.empty:
             return f"✅ Found in Excel: **{exact['Category'].values[0]}**"
     
-        # Rule-based check
+        # Try rule-based detection.
         rule = detect_priority(desc)
         if rule != "Unknown Violation":
             return rule
     
-        # ML fallback
+        # Fall back to ML prediction.
         vec = tfidf.transform([desc])
         proba = model.predict_proba(vec)
         idx = np.argmax(proba)
@@ -674,4 +674,3 @@ elif menu == "MVR GPT":
         else:
             result = classify_violation(user_input)
             st.info(result)
-    
