@@ -605,7 +605,7 @@ elif menu == "MVR GPT":
         "lic", "fine", "court", "suspension", "misc", "sticker", "tags", "miscellaneous",
         "background check", "notice", "seat belt", "insurance", "certificate",
         "weighing", "loading", "length", "carrying", "loads", "susp", "seatbelt",
-        "failure to signal", "illegal stop", "obstructing traffic"
+        "failure to signal", "illegal stop", "obstructing traffic","law"
     ]
     non_moving_keywords = [kw.lower() for kw in non_moving_keywords]
     
@@ -621,13 +621,13 @@ elif menu == "MVR GPT":
         desc = desc.lower()
     
         if any(kw in desc for kw in non_moving_keywords):
-            return "🚨 Constant Output: **Non-Moving Violation**"
+            return "🚨 **Non-Moving Violation**"
     
         match = re.search(r"(\d{2,})/(\d{2,})", desc)
         if match:
             num, denom = map(int, match.groups())
             if num < denom:
-                return "❌ Invalid Speeding Data"
+                return "Minor Violation"
             elif num - denom >= 20:
                 return "🚨 Major Violation"
             else:
@@ -645,10 +645,10 @@ elif menu == "MVR GPT":
     
         exact = df[df["Violation Description"].str.lower() == desc]
         if not exact.empty:
-            return f"✅ Found in Excel: **{exact['Category'].values[0]}**"
+            return f"✅ Exact: **{exact['Category'].values[0]}**"
     
         rule = detect_priority(desc)
-        if rule != "Unknown Violation":
+        if rule != "Unknown Violation,Better ask QA Team":
             return rule
     
         vec = tfidf.transform([desc])
@@ -656,7 +656,7 @@ elif menu == "MVR GPT":
         idx = np.argmax(proba)
         predicted_label = label_encoder.inverse_transform([idx])[0]
         confidence = proba[0][idx] * 100
-        return f"🤖 ML-Based Prediction: **{predicted_label}** (Confidence: {confidence:.2f}%)"
+        return f"🤖 Partial Prediction: **{predicted_label}** (Confidence: {confidence:.2f}%)"
     
     # === Streamlit UI ===
     user_input = st.text_input("🔍 Enter Violation Description:")
