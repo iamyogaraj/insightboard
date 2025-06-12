@@ -554,124 +554,122 @@ elif menu == "MVR GPT":
     @st.cache_data
     def load_data():
         try:
-            df = pd.read_excel("Violation GPT MODEL.xlsx", sheet_name="Sheet1")
+            df = pd.read_excel("Violation GPT MODEL.xlsx", engine="openpyxl")
+            df.columns = df.columns.str.strip()  # Clean column names
+            df = df.dropna(subset=["Violation Description", "Category"])
+            df["Violation Description"] = df["Violation Description"].str.strip()
             return df
         except Exception as e:
-            st.error(f"❌ Failed to load Excel file: {e}")
+            st.error(f"❌ Failed to load data: {e}")
             return pd.DataFrame()
-    
+
     df = load_data()
     if df.empty:
         st.stop()
-    
-    # Define Non-Moving Violation keywords
-    non_moving_keywords = [
-        "improper equipment", "defective equipment", "traffic fines", "penalties","lic","Lic","Fine","fine",
-        "court", "suspension", "misc", "sticker", "tags", "miscellaneous",
-        "background check", "notice", "seat belt", "insurance", "certificate",
-        "weighing", "loading", "length", "carrying", "loads", "susp", "seatbelt"
-    ]
-    
-    # ML Model Setup
-    if 'Violation Description' in df.columns and 'Category' in df.columns:
-        df = df.dropna(subset=['Violation Description', 'Category'])
-        X_text = df['Violation Description'].str.lower()
-        y = df['Category']
-        
-        tfidf = TfidfVectorizer(ngram_range=(1,2), stop_words="english")
-        X_numeric = tfidf.fit_transform(X_text)
-    
-        model_path = "violation_model.pkl"
-        try:
-            model = joblib.load(model_path)
-        except:
-            model = Pipeline([
-                ('clf', LogisticRegression(max_iter=500))
-            ])
-            model.fit(X_numeric, y)
-            joblib.dump(model, model_path)
-    
-    def detect_priority(description):
-        """Assigns violation category based on speeding fraction and keywords."""
-        description = description.lower()
-    
-        # Extract numerical fraction (e.g., "54/35")
-        fraction_match = re.search(r"(\d{2,})/(\d{2,})", description)
-        if fraction_match:
-            num = int(fraction_match.group(1))  # Nominator (e.g., 54)
-            denom = int(fraction_match.group(2))  # Denominator (e.g., 35)
-    
-            if num < denom:  # If nominator is less than denominator, it's invalid
-                return "❌ Invalid Speeding Data : Might be Minor"
-    
-            elif (num - denom) >= 20:  # Speeding 20+ mph over limit → Major Violation
-                return "🚨 Major Violation"
-    
-            else:  # Otherwise, classify as Minor Violation
-                return "⚠️ Minor Violation"
-    
-        # Check keyword priority
-        major_keywords = ["reckless", "dui", "excessive speeding", "dangerous"]
-        prohibited_keywords = ["prohibited", "unauthorized", "restricted"]
-        minor_keywords = ["speeding", "late payment", "parking violation"]
-        accident_keywords = ["collision", "crash", "hit and run"]
-        non_moving_keywords = ["failure to signal", "illegal stop", "obstructing traffic", "seatbelt"]
-    
-        for word in accident_keywords:
-            if word in description:
-                return "Accident Violation"
-        for word in non_moving_keywords:
-            if word in description:
-                return "Non-Moving Violation"
-        for word in major_keywords:
-            if word in description:
-                return "Major Violation"
-        for word in prohibited_keywords:
-            if word in description:
-                return "Prohibited Violation"
-        for word in minor_keywords:
-            if word in description:
-                return "Minor Violation"
-    
-        return "Unknown Violation"
-    
-    def classify_violation(description):
-        """Checks Excel first, then keyword-based classification, then fuzzy matching & ML."""
-        description_lower = description.lower()
-    
-        # **Step 1: Check Excel File First**
-        exact_match = df[df['Violation Description'].str.lower() == description_lower]
-        if not exact_match.empty:
-            return f"✅ Found in Excel: **{exact_match['Category'].values[0]}**"
-    
-        # **Step 2: Keyword-Based Classification for Non-Moving Violations**
-        priority_result = detect_priority(description_lower)
-        if priority_result != "Unknown Violation":
-            return f"🚨 Auto-Classified: **{priority_result}**"
-    
-        # **Step 3: Fuzzy Matching for Closest Match**
-        choices = df['Violation Description'].dropna().tolist()
-        match, score = process.extractOne(description, choices, scorer=fuzz.ratio)
-    
-        threshold = 75
-        if score >= threshold:
-            category = df.loc[df['Violation Description'] == match, 'Category'].values[0]
-            return f"🔍 Fuzzy Match: **{match}** (Confidence: {score}%) → **{category}**"
-    
-        # **Step 4: Apply ML Prediction as Last Resort**
-        description_transformed = tfidf.transform([description_lower])  # Transform input for ML
-        prediction_proba = model.predict_proba(description_transformed)  # Correct input format
-        model_prediction = model.classes_[np.argmax(prediction_proba)]
-        confidence = np.max(prediction_proba) * 100
-    
-        return f"🤖 ML-Based Prediction: **{model_prediction}** (Confidence: {confidence:.2f}%)"
-    
-    # User Input Section
-    user_input = st.text_input("Enter Violation Description:")
-    if user_input:
-        if user_input.lower() in ['yogaraj', 'yoga']:  # Special Easter Egg 😆
-            st.success("🐉 **Dragon Warrior** 🐼")
-        if user_input.lower() in ['court','lic','Lic','defective equipment','improper equipment']:
-            st.success("Not Required")
+
+    X_text = df["Violation Description"].str.lower()
+    y = df["Category"]
+
+    # === Encode & Vectorize ===
+    label_encoder = LabelEncoder()
+    y_encoded = label_encoder.fit_transform(y)
+
+    tfidf = TfidfVectorizer(ngram_range=(1, 2), stop_words="english")
+    X_vect = tfidf.fit_transform(X_text)
+
+    # === Train and Save Model Function ===
+    def train_and_save_model(X_vect, y_encoded, tfidf, label_encoder, model_path):
+        model = Pipeline([("clf", LogisticRegression(max_iter=500))])
+        model.fit(X_vect, y_encoded)
+        joblib.dump((model, tfidf, label_encoder), model_path)
+        return model, tfidf, label_encoder
+
+    # === Model Train or Robust Load ===
+    model_path = "violation_model.pkl"
+
+    if not os.path.exists(model_path):
+        st.info("Training model for the first time...")
+        model, tfidf, label_encoder = train_and_save_model(X_vect, y_encoded, tfidf, label_encoder, model_path)
+    else:
+        loaded_obj = joblib.load(model_path)
+        if isinstance(loaded_obj, tuple) and len(loaded_obj) == 3:
+            model, tfidf, label_encoder = loaded_obj
         else:
-            st.info(classify_violation(user_input))
+            st.warning("Saved model file not in expected format. Retraining model...")
+            model, tfidf, label_encoder = train_and_save_model(X_vect, y_encoded, tfidf, label_encoder, model_path)
+
+    # === Keyword Rules ===
+    non_moving_keywords = [
+        "improper equipment", "defective equipment", "traffic fines", "penalties",
+        "lic", "fine", "court", "suspension", "misc", "sticker", "tags", "miscellaneous",
+        "background check", "notice", "seat belt", "insurance", "certificate",
+        "weighing", "loading", "length", "carrying", "loads", "susp", "seatbelt",
+        "failure to signal", "illegal stop", "obstructing traffic","law","parking"
+    ]
+    # Ensure all keywords are lowercase
+    non_moving_keywords = [kw.lower() for kw in non_moving_keywords]
+
+    rules = {
+        "Accident Violation": ["collision", "crash", "hit and run"],
+        "Major Violation": ["reckless", "dui", "excessive speeding", "dangerous","school"],
+        "Prohibited Violation": ["prohibited", "unauthorized", "restricted"],
+        "Minor Violation": ["speeding", "late payment", "parking violation"]
+    }
+
+    # === Rule-Based Priority Detection ===
+    def detect_priority(desc):
+        desc = desc.lower()
+        
+        # Constant keyword override:
+        if any(kw in desc for kw in non_moving_keywords):
+            return "🚨**Non-Moving Violation**"
+        
+        # Speeding fraction logic:
+        match = re.search(r"(\d{2,})/(\d{2,})", desc)
+        if match:
+            num, denom = map(int, match.groups())
+            if num < denom:
+                return "Minor Violation"
+            elif num - denom >= 20:
+                return "🚨 Major Violation"
+            else:
+                return "⚠️ Minor Violation"
+        
+        # Additional rule-based checks:
+        for label, kw_list in rules.items():
+            if any(k in desc for k in kw_list):
+                return f"🚨 Rule-Based: **{label}**"
+        
+        return "Unknown Violation, Better ask QA Team"
+
+    # === Classification Engine ===
+    def classify_violation(description):
+        desc = description.strip().lower()
+
+        # Excel-based exact match check:
+        exact = df[df["Violation Description"].str.lower() == desc]
+        if not exact.empty:
+            return f"✅ Found in Excel: **{exact['Category'].values[0]}**"
+        
+        # Rule-based check:
+        rule = detect_priority(desc)
+        if rule != "Unknown Violation":
+            return rule
+
+        # ML fallback:
+        vec = tfidf.transform([desc])
+        proba = model.predict_proba(vec)
+        idx = np.argmax(proba)
+        predicted_label = label_encoder.inverse_transform([idx])[0]
+        confidence = proba[0][idx] * 100
+        return f"🤖 ML-Based Prediction: **{predicted_label}** (Confidence: {confidence:.2f}%)"
+
+    # === Streamlit UI ===
+    user_input = st.text_input("🔍 Enter Violation Description:")
+
+    if user_input:
+        if user_input.strip().lower() in ["yogaraj", "yoga"]:
+            st.success("🐉 **Dragon Warrior** 🐼")
+        else:
+            result = classify_violation(user_input)
+            st.info(result)
