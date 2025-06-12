@@ -555,6 +555,7 @@ elif menu == "MVR GPT":
     @st.cache_data
     def load_data():
         try:
+            # Read Excel using openpyxl as the engine
             df = pd.read_excel("Violation GPT MODEL.xlsx", engine="openpyxl")
             df.columns = df.columns.str.strip()  # Clean column names
             df = df.dropna(subset=["Violation Description", "Category"])
@@ -578,21 +579,22 @@ elif menu == "MVR GPT":
     tfidf = TfidfVectorizer(ngram_range=(1, 2), stop_words="english")
     X_vect = tfidf.fit_transform(X_text)
     
-    # === Train and Save Model Function ===
+    # === Model Train and Save Function ===
     def train_and_save_model(X_vect, y_encoded, tfidf, label_encoder, model_path):
         model = Pipeline([("clf", LogisticRegression(max_iter=500))])
         model.fit(X_vect, y_encoded)
+        # Save the tuple (model, tfidf, label_encoder)
         joblib.dump((model, tfidf, label_encoder), model_path)
         return model, tfidf, label_encoder
     
     # === Model Train or Robust Load ===
-    model_path = "violation_model.pkl"
-    
+    model_path = "violation_model.pkl"  # Ensure this is globally defined
     if not os.path.exists(model_path):
         st.info("Training model for the first time...")
         model, tfidf, label_encoder = train_and_save_model(X_vect, y_encoded, tfidf, label_encoder, model_path)
     else:
         loaded_obj = joblib.load(model_path)
+        # Check that the loaded object is a tuple with exactly three items
         if isinstance(loaded_obj, tuple) and len(loaded_obj) == 3:
             model, tfidf, label_encoder = loaded_obj
         else:
@@ -607,7 +609,6 @@ elif menu == "MVR GPT":
         "weighing", "loading", "length", "carrying", "loads", "susp", "seatbelt",
         "failure to signal", "illegal stop", "obstructing traffic"
     ]
-    # Ensure all keywords are lowercase
     non_moving_keywords = [kw.lower() for kw in non_moving_keywords]
     
     rules = {
@@ -620,12 +621,12 @@ elif menu == "MVR GPT":
     # === Rule-Based Priority Detection ===
     def detect_priority(desc):
         desc = desc.lower()
-        
-        # Constant keyword override:
+    
+        # Constant keyword override
         if any(kw in desc for kw in non_moving_keywords):
             return "🚨 Constant Output: **Non-Moving Violation**"
-        
-        # Speeding fraction logic:
+    
+        # Check for speeding fraction
         match = re.search(r"(\d{2,})/(\d{2,})", desc)
         if match:
             num, denom = map(int, match.groups())
@@ -635,29 +636,29 @@ elif menu == "MVR GPT":
                 return "🚨 Major Violation"
             else:
                 return "⚠️ Minor Violation"
-        
-        # Additional rule-based checks:
-        for label, kw_list in rules.items():
+    
+        # Additional rule-based checks
+        for lbl, kw_list in rules.items():
             if any(k in desc for k in kw_list):
-                return f"🚨 Rule-Based: **{label}**"
-        
+                return f"🚨 Rule-Based: **{lbl}**"
+    
         return "Unknown Violation"
     
     # === Classification Engine ===
     def classify_violation(description):
         desc = description.strip().lower()
     
-        # Excel-based exact match check:
+        # Excel exact match check
         exact = df[df["Violation Description"].str.lower() == desc]
         if not exact.empty:
             return f"✅ Found in Excel: **{exact['Category'].values[0]}**"
-        
-        # Rule-based check:
+    
+        # Rule-based check
         rule = detect_priority(desc)
         if rule != "Unknown Violation":
             return rule
     
-        # ML fallback:
+        # ML fallback
         vec = tfidf.transform([desc])
         proba = model.predict_proba(vec)
         idx = np.argmax(proba)
@@ -667,10 +668,10 @@ elif menu == "MVR GPT":
     
     # === Streamlit UI ===
     user_input = st.text_input("🔍 Enter Violation Description:")
-    
     if user_input:
         if user_input.strip().lower() in ["yogaraj", "yoga"]:
             st.success("🐉 **Dragon Warrior** 🐼")
         else:
             result = classify_violation(user_input)
             st.info(result)
+    
