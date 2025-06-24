@@ -528,8 +528,8 @@ elif menu == "QC Radar" and st.session_state["role"] in ["admin", "user"]:
     from io import BytesIO
     import streamlit as st
 
-    st.markdown('<div class="custom-heading">QC Radar by HDVI</div>', unsafe_allow_html=True)
-    st.write("Upload an MVR Excel file to validate using HDVI’s QC Radar engine.")
+    st.markdown('<div class="custom-heading">Knock knock! Your HDVI MVR wants to be validated 👀</div>', unsafe_allow_html=True)
+    st.write("Upload an MVR Excel file to validate.")
 
     def run_qc(df: pd.DataFrame):
         today = date.today()
