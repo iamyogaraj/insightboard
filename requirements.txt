@@ -8,3 +8,10 @@ numpy
 scikit-learn
 joblib
 fuzzywuzzy
+plotly
+pytz
+pydeck
+streamlit-aggrid
+streamlit-lottie
+requests
+earthengine-api
