@@ -80,82 +80,74 @@ body, .stMarkdown, .stText, .stDataFrame, .stMetric {
 """, unsafe_allow_html=True)
 
 # --- Authentication System ---
+credentials = {
+    "yogaraj": {"password": "afreen", "role": "ADMIN"},
+    "Maha": {"password": "Maha@129", "role": "QA"},
+    "Gokul": {"password": "reddead", "role": "QA"},
+    "user": {"password": "ssapopb", "role": "MAKER"}
+}
+
+# --- Authentication Function ---
 def authenticate(username, password):
-    """Check user credentials and return role"""
-    credentials = {
-        "admin": {"username": "yogaraj", "password": "afrin", "role": "ADMIN"},
-        "user": {"username": "user", "password": "ssapresu", "role": "QA"},
-        "bpo": {"username": "user", "password": "ssapopb", "role": "MAKER"}
-    }
-    
-    for role, creds in credentials.items():
-        if username == creds["username"] and password == creds["password"]:
-            return role
+    if username in credentials and password == credentials[username]["password"]:
+        return credentials[username]["role"]
     return None
 
+# --- Initialize Session State ---
+if "authenticated" not in st.session_state:
+    st.session_state["authenticated"] = False
+    st.session_state["username"] = None
+    st.session_state["role"] = None
+
+# --- Show Login if Not Authenticated ---
 def show_login():
-    """Show login form and handle authentication"""
     with st.sidebar:
-        st.title("Login")
+        st.title("🔐 Login")
         username = st.text_input("Username")
         password = st.text_input("Password", type="password")
-        
         if st.button("Login"):
             role = authenticate(username, password)
             if role:
                 st.session_state["authenticated"] = True
-                st.session_state["role"] = role
                 st.session_state["username"] = username
+                st.session_state["role"] = role
                 st.rerun()
             else:
                 st.error("Invalid username or password")
 
-# Initialize session state
-if "authenticated" not in st.session_state:
-    st.session_state["authenticated"] = False
-    st.session_state["role"] = None
-    st.session_state["username"] = None
-
-# Show login if not authenticated
 if not st.session_state["authenticated"]:
     show_login()
     st.stop()
 
-# --- Role-Based Access Control ---
+# --- Role-based Menu Generator ---
 def get_menu_options(role):
-    """Return menu options based on user role"""
-    full_menu = ["App", "QC Radar", "All Trans MVR", "Truckings IFTA", "Riscom MVR", "MVR GPT"]
-    
-    if role == "admin":
-        return full_menu
-    elif role == "user":
-        return full_menu  # User gets 99% access (all options)
-    elif role == "bpo":
-        return ["MVR GPT"]  # BPO only gets MVR GPT
+    base = ["App", "QC Radar", "All Trans MVR", "Truckings IFTA", "Riscom MVR", "MVR GPT"]
+    if role == "ADMIN":
+        return base + ["Insight Dashboard"]
+    elif role == "QA":
+        return base
+    elif role == "MAKER":
+        return ["MVR GPT"]
     return []
 
-# Sidebar menu with role-based options
-menu_options = get_menu_options(st.session_state["role"])
-
+# --- Sidebar Layout (Everything Inside) ---
 with st.sidebar:
-    st.markdown(f"### Welcome, {st.session_state['username']} ({st.session_state['role']})")
+    st.markdown(f"### 👋 Welcome, **{st.session_state['username']}**")
+    st.markdown(f"**Role:** {st.session_state['role']}")
     st.markdown("---")
-    st.markdown("### Menu")
-    
+
+    menu_options = get_menu_options(st.session_state["role"])
     if menu_options:
-        menu = st.radio("", menu_options, index=0, label_visibility="collapsed")
+        menu = st.radio("📋 Menu", menu_options, label_visibility="collapsed")
     else:
-        st.warning("No menu options available for your role")
+        st.warning("No menu options available.")
         menu = None
-    
+
     st.markdown("---")
     if st.button("Logout"):
-        st.session_state["authenticated"] = False
-        st.session_state["role"] = None
-        st.session_state["username"] = None
+        st.session_state.clear()
         st.rerun()
-    
-    st.markdown("Built with Yogaraj")
+    st.caption("Built with Yogaraj ")
 
 # --- EXACT CORE LOGIC FROM YOUR PROVIDED CODE ---
 def normalize_name(name):
