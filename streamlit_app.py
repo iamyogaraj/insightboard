@@ -227,26 +227,25 @@ def get_valid_column(df, purpose, default_names, required=True):
 # --- END OF EXACT CORE LOGIC ---
 
 # --- Main Application Logic ---
-if menu == "All Trans MVR" and st.session_state["role"] in ["admin", "user"]:
+if menu == "All Trans MVR":
     all_trans_mvr_app(get_valid_column, names_match)
 # Welcome screen for "App" menu
 elif menu == "App":
-    from insight_dashboard import render_dashboard
-    render_dashboard()
+    from insight_dashboard import insight_dashboard_app
+    insight_dashboard_app()
 # HDVI MVR tool
-elif menu == "QC Radar" and st.session_state["role"] in ["admin", "user"]:
+elif menu == "QC Radar":
     qc_radar_app()
 # Truckings IFTA tool
-elif menu == "Truckings IFTA" and st.session_state["role"] in ["admin", "user"]:
+elif menu == "Truckings IFTA":
     st.markdown('<div class="custom-heading">Truckings IFTA Tool</div>', unsafe_allow_html=True)
     st.write("Truckings IFTA tool will be available soon.")
 
 # Riscom MVR tool
-elif menu == "Riscom MVR" and st.session_state["role"] in ["admin", "user"]:
+elif menu == "Riscom MVR":
     st.markdown('<div class="custom-heading">Riscom MVR Tool</div>', unsafe_allow_html=True)
     st.write("Riscom MVR tool will be available soon.")
 
 # MVR GPT tool (accessible to all roles)
 elif menu == "MVR GPT":
     mvr_gpt_app()
-    
