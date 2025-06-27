@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 from datetime import date
 from io import BytesIO
+from qc_logger import process_qc_submission
 
 def qc_radar_app():
     st.markdown('<div class="custom-heading">Knock knock! Your HDVI MVR wants to be validated 👀</div>', unsafe_allow_html=True)
@@ -169,6 +170,21 @@ def qc_radar_app():
                 st.write(f"✅ Valid Rows: {counts['valid']}")
                 st.write(f"⚠️ Partial Rows: {counts['partial']}")
                 st.write(f"❌ High Risk Rows: {counts['fail']}")
+
+                # ✅ Submit Task Logging
+                st.markdown("### 📝 Submit This Task")
+                task_type = st.selectbox("Select Task Type", ["HDVI MVR", "Alltrans MVR", "IFTA"])
+
+                if "username" in st.session_state:
+                    if st.button("📌 Submit QC Result"):
+                        result = process_qc_submission(
+                            user=st.session_state["username"],
+                            task_type=task_type,
+                            confidence=confidence
+                        )
+                        st.success(f"🎯 Task {result['TaskID']} logged for **{result['UserID']}** — Accuracy: **{confidence}%**")
+                else:
+                    st.warning("🔐 Please login to submit this result.")
 
         except Exception as e:
             st.error(f"An error occurred while processing your file: {e}")
