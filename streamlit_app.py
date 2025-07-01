@@ -122,7 +122,7 @@ if not st.session_state["authenticated"]:
 
 # --- Role-based Menu Generator ---
 def get_menu_options(role):
-    base = ["App", "QC Radar", "All Trans MVR", "Truckings IFTA", "Riscom MVR", "MVR GPT"]
+    base = ["QC Radar", "All Trans MVR", "Truckings IFTA", "Riscom MVR", "MVR GPT"]
     if role == "ADMIN":
         return base + ["Insight Dashboard"]
     elif role == "QA":
@@ -231,9 +231,6 @@ def get_valid_column(df, purpose, default_names, required=True):
 if menu == "All Trans MVR":
     all_trans_mvr_app(get_valid_column, names_match)
 # Welcome screen for "App" menu
-elif menu == "App":
-    from insight_dashboard import insight_dashboard_app
-    insight_dashboard_app()
 # HDVI MVR tool
 elif menu == "QC Radar":
     qc_radar_app()
