@@ -7,6 +7,7 @@ from datetime import datetime
 from all_trans_mvr import all_trans_mvr_app
 from mvr_gpt import mvr_gpt_app
 from qc_radar import qc_radar_app
+from insight_dashboard import insight_dashboard_app
 
 
 # Set page configuration
@@ -249,3 +250,5 @@ elif menu == "Riscom MVR":
 # MVR GPT tool (accessible to all roles)
 elif menu == "MVR GPT":
     mvr_gpt_app()
+elif menu == "Insight Dashboard":
+    insight_dashboard_app()
