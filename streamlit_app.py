@@ -8,6 +8,7 @@ from all_trans_mvr import all_trans_mvr_app
 from mvr_gpt import mvr_gpt_app
 from qc_radar import qc_radar_app
 from insight_dashboard import insight_dashboard_app
+from Supplement import extract_questions_from_pdf, search_question
 
 
 # Set page configuration
@@ -122,7 +123,7 @@ if not st.session_state["authenticated"]:
 
 # --- Role-based Menu Generator ---
 def get_menu_options(role):
-    base = ["QC Radar", "All Trans MVR", "Truckings IFTA", "Riscom MVR", "MVR GPT"]
+    base = ["QC Radar", "All Trans MVR", "Supplement", "Riscom MVR", "MVR GPT"]
     if role == "ADMIN":
         return base + ["Insight Dashboard"]
     elif role == "QA":
@@ -249,3 +250,20 @@ elif menu == "MVR GPT":
     mvr_gpt_app()
 elif menu == "Insight Dashboard":
     insight_dashboard_app()
+elif menu == "Supplement":
+    def main():
+        st.title("Supplement View")
+        uploaded_file = st.file_uploader("Upload Safety Questionnaire PDF", type=["pdf"])
+
+        if uploaded_file:
+            st.info("Got it..")
+            indexed_questions = extract_questions_from_pdf(uploaded_file)
+            st.success(f"✅ Found {len(indexed_questions)} Close related questions.")
+
+            user_query = st.text_area("Enter safety-related question or concern:")
+            if st.button("Check"):
+                result = search_question(indexed_questions, user_query)
+                st.code(result)
+
+    if __name__ == "__main__":
+        main()
