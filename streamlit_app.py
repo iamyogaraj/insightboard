@@ -251,19 +251,32 @@ elif menu == "MVR GPT":
 elif menu == "Insight Dashboard":
     insight_dashboard_app()
 elif menu == "Supplement":
-    def main():
-        st.title("Supplement View")
-        uploaded_file = st.file_uploader("Upload Safety Questionnaire PDF", type=["pdf"])
+    import io
+    from processor import PDFProcessor
+    import pandas as pd
+    import time
 
-        if uploaded_file:
-            st.info("Got it..")
-            indexed_questions = extract_questions_from_pdf(uploaded_file)
-            st.success(f"✅ Found {len(indexed_questions)} Close related questions.")
+    # Initialize processor
+    @st.cache_resource
+    def get_processor():
+        return PDFProcessor()
 
-            user_query = st.text_area("Enter safety-related question or concern:")
-            if st.button("Check"):
-                result = search_question(indexed_questions, user_query)
-                st.code(result)
+    processor = get_processor()
+    # File upload
+    question_set = st.radio("Question Set", ["Method", "Foresight"])
+    uploaded_file = st.file_uploader("Upload PDF", type="pdf")
+    
 
-    if __name__ == "__main__":
-        main()
+    if uploaded_file:
+        with st.spinner("Processing PDF..."):
+            pdf_file = io.BytesIO(uploaded_file.read())
+            pages, is_scanned = processor.extract_text(pdf_file)
+            answers = processor.find_answers(pages, question_set)
+        
+        # Display results
+        df = pd.DataFrame(answers)
+        st.dataframe(df)
+        
+        # Add download button
+        csv = df.to_csv(index=False).encode('utf-8')
+        st.download_button("Download Results", data=csv, file_name="results.csv")
